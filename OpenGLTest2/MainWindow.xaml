@@ -5,15 +5,31 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:OpenGLTest2"
         xmlns:OpenTK="clr-namespace:OpenTK;assembly=OpenTK.GLControl"
+        xmlns:wf="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"        
         mc:Ignorable="d"
-        Title="MainWindow" Height="350" Width="525">
+        Title="MainWindow" Height="286" Width="710">
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="100*"/>
+            <ColumnDefinition Width="100*"/>
+        </Grid.ColumnDefinitions>
+
         <WindowsFormsHost
+            x:Name="GLControlHost"
+            Grid.Column="0"
             VerticalAlignment="Stretch"
             HorizontalAlignment="Stretch"
             Margin="2"
             >
             <OpenTK:GLControl x:Name="glControl" Load="glControl_Load" Resize="glControl_Resize" Paint="glControl_Paint" />
+        </WindowsFormsHost>
+        <WindowsFormsHost
+            Grid.Column="1"
+            VerticalAlignment="Stretch"
+            HorizontalAlignment="Stretch"
+            Margin="2"
+            >
+            <wf:PictureBox x:Name="pictureBox1" Dock="Fill" BackColor="MidnightBlue"/>
         </WindowsFormsHost>
     </Grid>
 </Window>
