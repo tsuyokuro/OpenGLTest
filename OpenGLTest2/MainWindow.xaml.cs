@@ -33,6 +33,8 @@ namespace OpenGLTest2
         Vector3 LookAt = default(Vector3);
         Vector3 UpVector = default(Vector3);
 
+        GLControl glControl;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -40,8 +42,14 @@ namespace OpenGLTest2
             InputThread = new DebugInputThread(debugCommand);
             InputThread.start();
 
+            glControl = new GLControl();
+
+            glControl.Load += glControl_Load;
+            glControl.Resize += glControl_Resize;
+            glControl.Paint += glControl_Paint;
             glControl.MouseMove += GlControl_MouseMove;
 
+            GLControlHost.Child = glControl;
         }
 
         private void GlControl_MouseMove(object sender, System.Windows.Forms.MouseEventArgs e)
@@ -351,7 +359,7 @@ namespace OpenGLTest2
         {
             Graphics g = pictureBox1.CreateGraphics();
 
-            g.DrawLine(Pens.White, 10, 10, 100, 100);
+            g.DrawLine(Pens.White, 0, 0, 100, 100);
         }
 
         private void dumpVect(string name, Vector4 v)

@@ -21,7 +21,6 @@
             HorizontalAlignment="Stretch"
             Margin="2"
             >
-            <OpenTK:GLControl x:Name="glControl" Load="glControl_Load" Resize="glControl_Resize" Paint="glControl_Paint" />
         </WindowsFormsHost>
         <WindowsFormsHost
             Grid.Column="1"
