@@ -19,6 +19,7 @@ using OpenTK.Graphics.OpenGL;
 
 using DebugUtil;
 using System.Drawing;
+using FTGL;
 
 namespace OpenGLTest2
 {
@@ -35,6 +36,9 @@ namespace OpenGLTest2
 
         GLControl glControl;
 
+
+        FontWrapper FontW;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -50,6 +54,14 @@ namespace OpenGLTest2
             glControl.MouseMove += GlControl_MouseMove;
 
             GLControlHost.Child = glControl;
+
+            //FontW = FontWrapper.LoadFile("F:\\vsprj\\OpenGLTest2\\OpenGLTest2\\Fonts\\togoshi-gothic.ttf");
+
+            FontW = FontWrapper.LoadFile("C:\\Windows\\Fonts\\msgothic.ttc");
+            //FontW = FontWrapper.LoadFile("F:\\vsprj\\OpenGLTest2\\OpenGLTest2\\Fonts\\SmartFont.otf");
+
+            FontW.FontSize = 20;
+
         }
 
         private void GlControl_MouseMove(object sender, System.Windows.Forms.MouseEventArgs e)
@@ -98,7 +110,24 @@ namespace OpenGLTest2
             float w2 = 1.0f;
             float z = 0.0f;
 
+            //GL.ClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+
+            GL.PushMatrix();
+
+            GL.Translate(0, 0, -100);
+            GL.Color4(Color4.White);
+
+            string s = "あtest黒木";
+
+            //FontW.SetCharMap(FTEncord.UNICODE);
+
+            FontW.RenderW(s,RenderMode.All);
+
+
+            GL.PopMatrix();
+
 
             GL.MatrixMode(MatrixMode.Modelview);
 
@@ -110,7 +139,6 @@ namespace OpenGLTest2
 
 
             GL.LoadMatrix(ref modelview);
-
 
             GL.Begin(PrimitiveType.Lines);
 
@@ -258,13 +286,13 @@ namespace OpenGLTest2
             v.W = 1f;
 
             v2 = trans(modelview, Projection, v);
-
-            dumpVect("v1", v1);
-            dumpVect("v2", v2);
             testDrawLine(v1, v2);
-
-
             v1 = v2;
+
+            v2.Z = 0;
+
+            vt = invert(modelview, Projection, v2);
+
 
             v.X = 1f;
             v.Y = -1f;
@@ -272,8 +300,6 @@ namespace OpenGLTest2
             v.W = 1f;
 
             v2 = trans(modelview, Projection, v);
-            dumpVect("v1", v1);
-            dumpVect("v2", v2);
             testDrawLine(v1, v2);
 
 
@@ -285,8 +311,6 @@ namespace OpenGLTest2
             v.W = 1f;
 
             v2 = trans(modelview, Projection, v);
-            dumpVect("v1", v1);
-            dumpVect("v2", v2);
             testDrawLine(v1, v2);
 
 
@@ -298,8 +322,6 @@ namespace OpenGLTest2
             v.W = 1f;
 
             v2 = trans(modelview, Projection, v);
-            dumpVect("v1", v1);
-            dumpVect("v2", v2);
             testDrawLine(v1, v2);
         }
 
