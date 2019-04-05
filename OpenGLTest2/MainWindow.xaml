@@ -7,10 +7,9 @@
         xmlns:OpenTK="clr-namespace:OpenTK;assembly=OpenTK.GLControl"
         xmlns:wf="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"        
         mc:Ignorable="d"
-        Title="MainWindow" Height="286" Width="710">
+        Title="MainWindow" Height="511.391" Width="495.973">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="100*"/>
             <ColumnDefinition Width="100*"/>
         </Grid.ColumnDefinitions>
 
@@ -21,14 +20,6 @@
             HorizontalAlignment="Stretch"
             Margin="2"
             >
-        </WindowsFormsHost>
-        <WindowsFormsHost
-            Grid.Column="1"
-            VerticalAlignment="Stretch"
-            HorizontalAlignment="Stretch"
-            Margin="2"
-            >
-            <wf:PictureBox x:Name="pictureBox1" Dock="Fill" BackColor="MidnightBlue"/>
         </WindowsFormsHost>
     </Grid>
 </Window>

@@ -20,6 +20,8 @@ using OpenTK.Graphics.OpenGL;
 using DebugUtil;
 using System.Drawing;
 using FTGL;
+using System.Windows.Resources;
+using System.IO;
 
 namespace OpenGLTest2
 {
@@ -27,15 +29,13 @@ namespace OpenGLTest2
     {
         private DebugInputThread InputThread;
 
-        Matrix4 Projection;
-        Matrix4 ModelView;
-
-        Vector3 Eye = default(Vector3);
-        Vector3 LookAt = default(Vector3);
-        Vector3 UpVector = default(Vector3);
-
         GLControl glControl;
 
+        Vector4 LightPosition;
+        Color4 LightAmbient;    // 環境光
+        Color4 LightColor;
+
+        int ShaderProgram;
 
         FontWrapper FontW;
 
@@ -61,7 +61,6 @@ namespace OpenGLTest2
             //FontW = FontWrapper.LoadFile("F:\\vsprj\\OpenGLTest2\\OpenGLTest2\\Fonts\\SmartFont.otf");
 
             FontW.FontSize = 20;
-
         }
 
         private void GlControl_MouseMove(object sender, System.Windows.Forms.MouseEventArgs e)
@@ -72,8 +71,7 @@ namespace OpenGLTest2
         //glControlの起動時に実行される。
         private void glControl_Load(object sender, EventArgs e)
         {
-            GL.ClearColor(Color4.Black);
-            GL.Enable(EnableCap.DepthTest);
+            SetupGL();
         }
 
         //glControlのサイズ変更時に実行される。
@@ -82,10 +80,10 @@ namespace OpenGLTest2
             GL.Viewport(0, 0, glControl.Size.Width, glControl.Size.Height);
 
             float aspect = (float)glControl.Size.Width / (float)glControl.Size.Height;
-            float fovy = (float)Math.PI / 2.0f;
+            float fovy = (float)Math.PI / 4.0f;
 
             GL.MatrixMode(MatrixMode.Projection);
-            Projection =
+            Matrix4 projection =
                 Matrix4.CreatePerspectiveFieldOfView(
                     fovy,
                     aspect,
@@ -93,343 +91,175 @@ namespace OpenGLTest2
                     6400.0f     // far
                     );
 
-            GL.LoadMatrix(ref Projection);
-
-            // Orthographic 平行投影
-            /*
-            GL.MatrixMode(MatrixMode.Projection);
-            Matrix4 projection =
-                Matrix4.CreateOrthographic(glControl.Size.Width, glControl.Size.Height, 1.0f, -64.0f);
             GL.LoadMatrix(ref projection);
-            */
         }
 
-        //glControlの描画時に実行される。
-        private void glControl_Paint(object sender, System.Windows.Forms.PaintEventArgs e)
+        private void DrawText()
         {
-            float w2 = 1.0f;
-            float z = 0.0f;
-
-            //GL.ClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            GL.MatrixMode(MatrixMode.Modelview);
 
             GL.PushMatrix();
 
-            GL.Translate(0, 0, -100);
+            GL.Translate(0, 0, 0);
+
+            GL.Scale(0.2, 0.2, 0.2);
+
             GL.Color4(Color4.White);
 
             string s = "あtest黒木";
 
             //FontW.SetCharMap(FTEncord.UNICODE);
 
-            FontW.RenderW(s,RenderMode.All);
+            FontW.RenderW(s, RenderMode.All);
 
+            GL.Uniform1(GL.GetUniformLocation(ShaderProgram, "texture"), 1);
 
             GL.PopMatrix();
-
-
-            GL.MatrixMode(MatrixMode.Modelview);
-
-            Vector3 eye = Vector3.Zero;
-            eye.X = 4f;
-            eye.Y = 4f;
-            eye.Z = 4f;
-            Matrix4 modelview = Matrix4.LookAt(eye, Vector3.Zero, Vector3.UnitY);
-
-
-            GL.LoadMatrix(ref modelview);
-
-            GL.Begin(PrimitiveType.Lines);
-
-            GL.Color4(Color4.White);
-            GL.Vertex3(-w2, w2, z);
-            GL.Vertex3(-w2, -w2, z);
-
-            GL.Color4(Color4.Red);
-            GL.Vertex3(-w2, -w2, z);
-            GL.Vertex3(w2, -w2, z);
-
-            GL.Color4(Color4.Lime);
-            GL.Vertex3(w2, -w2, z);
-            GL.Vertex3(w2, w2, z);
-
-            GL.Color4(Color4.Blue);
-            GL.Vertex3(w2, w2, z);
-            GL.Vertex3(-w2, w2, z);
-
-
-            GL.Color4(Color4.White);
-            GL.Vertex3(-w2, -w2, 0);
-            GL.Vertex3(-w2, -w2, -w2 * 2);
-
-            GL.Color4(Color4.White);
-            GL.Vertex3(-w2, -w2, -w2 * 2);
-            GL.Vertex3(w2, -w2, -w2 * 2);
-
-            GL.Color4(Color4.White);
-            GL.Vertex3(w2, -w2, -w2 * 2);
-            GL.Vertex3(w2, -w2, 0);
-
-            GL.End();
-
-            /*
-            GL.MatrixMode(MatrixMode.Projection);
-            Matrix4 projection =
-                Matrix4.CreateOrthographic(glControl.Size.Width, glControl.Size.Height, 1.0f, -64.0f);
-            GL.LoadMatrix(ref projection);
-
-
-            Vector3 eye2 = Vector3.Zero;
-            eye.Z = 4f;
-            Matrix4 modelview2 = Matrix4.LookAt(eye2, Vector3.Zero, Vector3.UnitY);
-
-            GL.MatrixMode(MatrixMode.Modelview);
-            GL.LoadMatrix(ref modelview2);
-
-            GL.Rect(0, 0, 10, 10);
-            */
-
-            GL.MatrixMode(MatrixMode.Projection);
-            GL.LoadIdentity();
-
-            GL.MatrixMode(MatrixMode.Modelview);
-            GL.LoadIdentity();
-
-            Matrix4 view = Matrix4.CreateOrthographicOffCenter(
-                                        0, glControl.Size.Width,
-                                        glControl.Size.Height,0,
-                                        0, 1000);
-            GL.MultMatrix(ref view);
-
-
-            GL.Begin(PrimitiveType.Lines);
-
-            GL.Color4(Color4.White);
-            GL.Vertex3(0, 0, 0f);
-            GL.Vertex3(100, 100, 0f);
-
-            GL.End();
-
-            glControl.SwapBuffers();
-
         }
 
-        private void test1()
+        private void SetupGL()
         {
-            float w2 = 1.0f;
-            float z = 0.0f;
+            GL.ClearColor(Color4.Black);
+            //GL.Enable(EnableCap.DepthTest);
 
+            SetupLight();
+            SetupShader();
+        }
+
+        private void SetupShader()
+        {
+            string vertexSrc = ReadResourceText("/Shader/vertex.shader");
+            string fragmentSrc = ReadResourceText("/Shader/fragment.shader");
+
+            int status;
+
+            int vertexShader = GL.CreateShader(ShaderType.VertexShader);
+            GL.ShaderSource(vertexShader, vertexSrc);
+            GL.CompileShader(vertexShader);
+            GL.GetShader(vertexShader, ShaderParameter.CompileStatus, out status);
+            if (status == 0)
+            {
+                throw new ApplicationException(GL.GetShaderInfoLog(vertexShader));
+            }
+
+            int fragmentShader = GL.CreateShader(ShaderType.FragmentShader);
+            GL.ShaderSource(fragmentShader, fragmentSrc);
+            GL.CompileShader(fragmentShader);
+            GL.GetShader(fragmentShader, ShaderParameter.CompileStatus, out status);
+            if (status == 0)
+            {
+                throw new ApplicationException(GL.GetShaderInfoLog(fragmentShader));
+            }
+
+
+            ShaderProgram = GL.CreateProgram();
+
+            //各シェーダオブジェクトをシェーダプログラムへ登録
+            GL.AttachShader(ShaderProgram, vertexShader);
+            GL.AttachShader(ShaderProgram, fragmentShader);
+
+            //不要になった各シェーダオブジェクトを削除
+            GL.DeleteShader(vertexShader);
+            GL.DeleteShader(fragmentShader);
+
+            //シェーダプログラムのリンク
+            GL.LinkProgram(ShaderProgram);
+
+            GL.GetProgram(ShaderProgram, GetProgramParameterName.LinkStatus, out status);
+            //シェーダプログラムのリンクのチェック
+            if (status == 0)
+            {
+                throw new ApplicationException(GL.GetProgramInfoLog(ShaderProgram));
+            }
+
+            GL.UseProgram(ShaderProgram);
+        }
+
+
+        private string ReadResourceText(string path)
+        {
+            Uri fileUri = new Uri(path, UriKind.Relative);
+            StreamResourceInfo info = Application.GetResourceStream(fileUri);
+            StreamReader sr = new StreamReader(info.Stream);
+
+            string s = sr.ReadToEnd();
+            sr.Close();
+
+            return s;
+        }
+
+        private void SetupLight()
+        {
+            LightPosition = new Vector4(-5.0f, 0.0f, 5.0f, 1.0f);
+            LightColor = new Color4(1.0f, 1.0f, 1.0f, 1.0f);
+            LightAmbient = new Color4(0.1f, 0.1f, 0.1f, 1.0f);
+
+            GL.Enable(EnableCap.Lighting);
+            GL.Enable(EnableCap.Light0);
+
+            GL.Light(LightName.Light0, LightParameter.Ambient, LightAmbient);
+            GL.Light(LightName.Light0, LightParameter.Diffuse, LightColor);
+            GL.Light(LightName.Light0, LightParameter.Specular, LightColor);
+            GL.LightModel(LightModelParameter.LightModelLocalViewer, 1);
+        }
+
+        private void SetMaterial(Color4 color)
+        {
+            Color4 specular = new Color4(0.3f, 0.3f, 0.3f, 1.0f);
+
+            GL.Material(MaterialFace.FrontAndBack, MaterialParameter.AmbientAndDiffuse, color);
+            GL.Material(MaterialFace.FrontAndBack, MaterialParameter.Specular, specular);
+            GL.Material(MaterialFace.FrontAndBack, MaterialParameter.Shininess, 100.0f);
+        }
+
+        //glControlの描画時に実行される。
+        private void glControl_Paint(object sender, System.Windows.Forms.PaintEventArgs e)
+        {
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
             GL.MatrixMode(MatrixMode.Modelview);
+            GL.LoadIdentity();
 
             Vector3 eye = Vector3.Zero;
-            eye.Y = 4f;
-            eye.Z = 4f;
-
+            eye.X = 40f;
+            eye.Y = 40f;
+            eye.Z = 40f;
             Matrix4 modelview = Matrix4.LookAt(eye, Vector3.Zero, Vector3.UnitY);
             GL.LoadMatrix(ref modelview);
 
-            float[] m = new float[16];
-            GL.GetFloat(GetPName.ModelviewMatrix, m);
+            GL.Light(LightName.Light0, LightParameter.Position, LightPosition);
+
+            SetupLight();
+
+            SetMaterial(new Color4(0.6f, 0.1f, 0.1f, 1.0f));
+
+            float w = 10.0f;
+            float z = 0.0f;
+
+            GL.Normal3(new Vector3d(0, 0, 1));
 
             GL.Begin(PrimitiveType.Quads);
-            GL.Color4(Color4.White);
-            GL.Vertex3(-w2, w2, z);
-            GL.Color4(Color4.Red);
-            GL.Vertex3(-w2, -w2, z);
-            GL.Color4(Color4.Lime);
-            GL.Vertex3(w2, -w2, z);
-            GL.Color4(Color4.Blue);
-            GL.Vertex3(w2, w2, z);
+                       
+            GL.Vertex3(-w, -w, z);
+            GL.Vertex3(w, -w, z);
+            GL.Vertex3(w, w, z);
+            GL.Vertex3(-w, w, z);
+
             GL.End();
 
             glControl.SwapBuffers();
-        }
-
-        private void test2()
-        {
-            Vector4 v = default(Vector4);
-
-            Vector4 vt;
-            Vector4 vt2 = default(Vector4);
-            Vector4 v1 = default(Vector4);
-            Vector4 v2 = default(Vector4);
-
-            Vector3 eye = Vector3.Zero;
-            eye.X = 4f;
-            eye.Y = 4f;
-            eye.Z = 4f;
-            Matrix4 modelview = Matrix4.LookAt(eye, Vector3.Zero, Vector3.UnitY);
-
-
-            v.X = -1f;
-            v.Y = 1f;
-            v.Z = 0f;
-            v.W = 1f;
-
-            v1 = trans(modelview, Projection, v);
-
-            vt2 = v1;
-
-            vt2.X += 4;
-
-            vt = invert(modelview, Projection, v1);
-
-            vt = invert(modelview, Projection, vt2);
-
-
-            v.X = 1f;
-            v.Y = 1f;
-            v.Z = 0f;
-            v.W = 1f;
-
-            v2 = trans(modelview, Projection, v);
-            testDrawLine(v1, v2);
-            v1 = v2;
-
-            v2.Z = 0;
-
-            vt = invert(modelview, Projection, v2);
-
-
-            v.X = 1f;
-            v.Y = -1f;
-            v.Z = 0f;
-            v.W = 1f;
-
-            v2 = trans(modelview, Projection, v);
-            testDrawLine(v1, v2);
-
-
-            v1 = v2;
-
-            v.X = -1f;
-            v.Y = -1f;
-            v.Z = 0f;
-            v.W = 1f;
-
-            v2 = trans(modelview, Projection, v);
-            testDrawLine(v1, v2);
-
-
-            v1 = v2;
-
-            v.X = -1f;
-            v.Y = 1f;
-            v.Z = 0f;
-            v.W = 1f;
-
-            v2 = trans(modelview, Projection, v);
-            testDrawLine(v1, v2);
-        }
-
-        private void testDrawLine(Vector4 v1, Vector4 v2)
-        {
-            Graphics g = pictureBox1.CreateGraphics();
-            g.DrawLine(Pens.White, v1.X, v1.Y, v2.X, v2.Y);
-        }
-
-        private Vector4 trans(Matrix4 modelview, Matrix4 projection, Vector4 v)
-        {
-            Vector4 vw = v;
-
-            vw = Vector4.Transform(vw, modelview);
-            vw = Vector4.Transform(vw, projection);
-
-            vw.X /= vw.W;
-            vw.Y /= vw.W;
-            vw.Z /= vw.W;
-
-            vw.X = vw.X * ((float)glControl.Size.Width / 2f);
-            vw.Y = -vw.Y * ((float)glControl.Size.Height / 2f);
-            vw.X += (float)glControl.Size.Width / 2f;
-            vw.Y += (float)glControl.Size.Height / 2f;
-
-            return vw;
-        }
-
-
-        private Vector4 invert(Matrix4 modelview, Matrix4 projection, Vector4 v)
-        {
-            Vector4 vw = v;
-
-            Matrix4 imodelview = Matrix4.Invert(modelview);
-            Matrix4 iprojection = Matrix4.Invert(projection);
-
-            vw.X -= (float)glControl.Size.Width / 2f;
-            vw.Y -= (float)glControl.Size.Height / 2f;
-
-            vw.X = vw.X / ((float)glControl.Size.Width / 2f);
-            vw.Y = -vw.Y / ((float)glControl.Size.Height / 2f);
-
-            vw.X *= vw.W;
-            vw.Y *= vw.W;
-            vw.Z *= vw.W;
-
-            vw = Vector4.Transform(vw, iprojection);
-            vw = Vector4.Transform(vw, imodelview);
-
-            vw.W = 1f;
-
-            return vw;
-        }
-
-
-        private void test3()
-        {
-            Graphics g = pictureBox1.CreateGraphics();
-
-            g.DrawLine(Pens.White, 0, 0, 100, 100);
-        }
-
-        private void dumpVect(string name, Vector4 v)
-        {
-            debugp(name + "\n" +
-                    "x=" + v.X.ToString() + "\n" +
-                    "y=" + v.Y.ToString() + "\n" +
-                    "z=" + v.Z.ToString() + "\n" +
-                    "w=" + v.W.ToString() + "\n"
-                    );
-        }
-
-        private void dump()
-        {
-            debugl("Ctrl w=" +
-                    glControl.Size.Width.ToString() +
-                    " h=" +
-                    glControl.Size.Height.ToString()
-                    );
-        }
-
-        private void debugp(string s)
-        {
-            Console.Write(s);
-        }
-
-        private void debugl(string s)
-        {
-            Console.WriteLine(s);
         }
 
         private void debugCommand(String s)
         {
             if (s == "test1")
             {
-                test1();
             }
             else if (s == "test2")
             {
-                test2();
             }
             else if (s == "test3")
             {
-                test3();
-            }
-            else if (s == "dump")
-            {
-                dump();
             }
         }
     }
