@@ -19,9 +19,10 @@ using OpenTK.Graphics.OpenGL;
 
 using DebugUtil;
 using System.Drawing;
-using FTGL;
 using System.Windows.Resources;
 using System.IO;
+using FontUtil;
+using System.Drawing.Imaging;
 
 namespace OpenGLTest2
 {
@@ -35,9 +36,10 @@ namespace OpenGLTest2
         Color4 LightAmbient;    // 環境光
         Color4 LightColor;
 
-        int ShaderProgram;
+        int FigShaderProgram;
 
-        FontWrapper FontW;
+        int FontShaderProgram;
+        FontService mFontService;
 
         public MainWindow()
         {
@@ -55,12 +57,18 @@ namespace OpenGLTest2
 
             GLControlHost.Child = glControl;
 
-            //FontW = FontWrapper.LoadFile("F:\\vsprj\\OpenGLTest2\\OpenGLTest2\\Fonts\\togoshi-gothic.ttf");
+            mFontService = new FontService();
 
-            FontW = FontWrapper.LoadFile("C:\\Windows\\Fonts\\msgothic.ttc");
-            //FontW = FontWrapper.LoadFile("F:\\vsprj\\OpenGLTest2\\OpenGLTest2\\Fonts\\SmartFont.otf");
+            mFontService.SetFont("C:\\Windows\\Fonts\\msgothic.ttc");
+            mFontService.SetSize(24);
 
-            FontW.FontSize = 20;
+            Bitmap image = mFontService.RenderString("This is テスト", System.Drawing.Color.White, System.Drawing.Color.Blue);
+
+            image.Save("F:\\work2\\test.bmp");
+
+            image = mFontService.RenderString("a", System.Drawing.Color.White, System.Drawing.Color.Blue);
+
+            image.Save("F:\\work2\\test2.bmp");
         }
 
         private void GlControl_MouseMove(object sender, System.Windows.Forms.MouseEventArgs e)
@@ -108,11 +116,8 @@ namespace OpenGLTest2
 
             string s = "あtest黒木";
 
-            //FontW.SetCharMap(FTEncord.UNICODE);
 
-            FontW.RenderW(s, RenderMode.All);
-
-            GL.Uniform1(GL.GetUniformLocation(ShaderProgram, "texture"), 1);
+            GL.Uniform1(GL.GetUniformLocation(FigShaderProgram, "texture"), 1);
 
             GL.PopMatrix();
         }
@@ -120,13 +125,16 @@ namespace OpenGLTest2
         private void SetupGL()
         {
             GL.ClearColor(Color4.Black);
-            //GL.Enable(EnableCap.DepthTest);
+            GL.Enable(EnableCap.DepthTest);
 
             SetupLight();
-            SetupShader();
+            SetupFigShader();
+            SetupFontShader();
+
+            SetupTestTexture();
         }
 
-        private void SetupShader()
+        private void SetupFigShader()
         {
             string vertexSrc = ReadResourceText("/Shader/vertex.shader");
             string fragmentSrc = ReadResourceText("/Shader/fragment.shader");
@@ -152,29 +160,72 @@ namespace OpenGLTest2
             }
 
 
-            ShaderProgram = GL.CreateProgram();
+            FigShaderProgram = GL.CreateProgram();
 
             //各シェーダオブジェクトをシェーダプログラムへ登録
-            GL.AttachShader(ShaderProgram, vertexShader);
-            GL.AttachShader(ShaderProgram, fragmentShader);
+            GL.AttachShader(FigShaderProgram, vertexShader);
+            GL.AttachShader(FigShaderProgram, fragmentShader);
 
             //不要になった各シェーダオブジェクトを削除
             GL.DeleteShader(vertexShader);
             GL.DeleteShader(fragmentShader);
 
             //シェーダプログラムのリンク
-            GL.LinkProgram(ShaderProgram);
+            GL.LinkProgram(FigShaderProgram);
 
-            GL.GetProgram(ShaderProgram, GetProgramParameterName.LinkStatus, out status);
+            GL.GetProgram(FigShaderProgram, GetProgramParameterName.LinkStatus, out status);
             //シェーダプログラムのリンクのチェック
             if (status == 0)
             {
-                throw new ApplicationException(GL.GetProgramInfoLog(ShaderProgram));
+                throw new ApplicationException(GL.GetProgramInfoLog(FigShaderProgram));
             }
-
-            GL.UseProgram(ShaderProgram);
         }
 
+        private void SetupFontShader()
+        {
+            string vertexSrc = ReadResourceText("/Shader/font_vertex.shader");
+            string fragmentSrc = ReadResourceText("/Shader/font_fragment.shader");
+
+            int status;
+
+            int vertexShader = GL.CreateShader(ShaderType.VertexShader);
+            GL.ShaderSource(vertexShader, vertexSrc);
+            GL.CompileShader(vertexShader);
+            GL.GetShader(vertexShader, ShaderParameter.CompileStatus, out status);
+            if (status == 0)
+            {
+                throw new ApplicationException(GL.GetShaderInfoLog(vertexShader));
+            }
+
+            int fragmentShader = GL.CreateShader(ShaderType.FragmentShader);
+            GL.ShaderSource(fragmentShader, fragmentSrc);
+            GL.CompileShader(fragmentShader);
+            GL.GetShader(fragmentShader, ShaderParameter.CompileStatus, out status);
+            if (status == 0)
+            {
+                throw new ApplicationException(GL.GetShaderInfoLog(fragmentShader));
+            }
+
+            FontShaderProgram = GL.CreateProgram();
+
+            //各シェーダオブジェクトをシェーダプログラムへ登録
+            GL.AttachShader(FontShaderProgram, vertexShader);
+            GL.AttachShader(FontShaderProgram, fragmentShader);
+
+            //不要になった各シェーダオブジェクトを削除
+            GL.DeleteShader(vertexShader);
+            GL.DeleteShader(fragmentShader);
+
+            //シェーダプログラムのリンク
+            GL.LinkProgram(FontShaderProgram);
+
+            GL.GetProgram(FontShaderProgram, GetProgramParameterName.LinkStatus, out status);
+            //シェーダプログラムのリンクのチェック
+            if (status == 0)
+            {
+                throw new ApplicationException(GL.GetProgramInfoLog(FontShaderProgram));
+            }
+        }
 
         private string ReadResourceText(string path)
         {
@@ -212,6 +263,44 @@ namespace OpenGLTest2
             GL.Material(MaterialFace.FrontAndBack, MaterialParameter.Shininess, 100.0f);
         }
 
+        int TestTexture;
+        int TestTextureW;
+        int TestTextureH;
+
+        private void SetupTestTexture()
+        {
+            Bitmap image = mFontService.RenderString("This is テスト", System.Drawing.Color.White, System.Drawing.Color.Transparent);
+
+            image.RotateFlip(RotateFlipType.RotateNoneFlipY);
+
+            TestTextureW = image.Width;
+            TestTextureH = image.Height;
+
+            System.Drawing.Rectangle rect = new System.Drawing.Rectangle(0, 0, image.Width, image.Height);
+
+            BitmapData bd = image.LockBits(rect,
+                ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+
+            TestTexture = GL.GenTexture();
+
+            GL.BindTexture(TextureTarget.Texture2D, TestTexture);
+
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+
+            GL.TexImage2D(
+                TextureTarget.Texture2D, 0,
+                PixelInternalFormat.Rgba,
+                bd.Width, bd.Height, 0,
+                OpenTK.Graphics.OpenGL.PixelFormat.Bgra,
+                PixelType.UnsignedByte, bd.Scan0);
+
+            image.UnlockBits(bd);
+
+            image.Dispose();
+        }
+
         //glControlの描画時に実行される。
         private void glControl_Paint(object sender, System.Windows.Forms.PaintEventArgs e)
         {
@@ -221,9 +310,9 @@ namespace OpenGLTest2
             GL.LoadIdentity();
 
             Vector3 eye = Vector3.Zero;
-            eye.X = 40f;
-            eye.Y = 40f;
-            eye.Z = 40f;
+            eye.X = 50f;
+            eye.Y = 50f;
+            eye.Z = 200f;
             Matrix4 modelview = Matrix4.LookAt(eye, Vector3.Zero, Vector3.UnitY);
             GL.LoadMatrix(ref modelview);
 
@@ -231,19 +320,57 @@ namespace OpenGLTest2
 
             SetupLight();
 
-            SetMaterial(new Color4(0.6f, 0.1f, 0.1f, 1.0f));
+            GL.UseProgram(FigShaderProgram);
 
-            float w = 10.0f;
-            float z = 0.0f;
+            SetMaterial(new Color4(0.2f, 0.2f, 1.0f, 1.0f));
+
+            float fw = 10.0f;
+            float fz = -1.0f;
 
             GL.Normal3(new Vector3d(0, 0, 1));
 
             GL.Begin(PrimitiveType.Quads);
-                       
-            GL.Vertex3(-w, -w, z);
-            GL.Vertex3(w, -w, z);
-            GL.Vertex3(w, w, z);
-            GL.Vertex3(-w, w, z);
+
+            GL.Vertex3(-fw, -fw, fz);
+            GL.Vertex3(fw, -fw, fz);
+            GL.Vertex3(fw, fw, fz);
+            GL.Vertex3(-fw, fw, fz);
+
+            GL.End();
+
+            //GL.Enable(EnableCap.Texture2D);
+            //GL.UseProgram(0);
+
+            GL.UseProgram(FontShaderProgram);
+
+            GL.TexCoord2(1.0, 1.0);
+
+            int texLoc = GL.GetUniformLocation(FontShaderProgram, "tex");
+
+            GL.Uniform1(texLoc, 0);
+
+            float w = TestTextureW/4;
+            float h = TestTextureH/4;
+            float z = 1f;
+
+            GL.Enable(EnableCap.Blend);
+            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+
+            GL.Normal3(new Vector3d(0, 0, 1));
+
+            GL.Begin(PrimitiveType.Quads);
+
+            GL.TexCoord2(1.0, 1.0);
+            GL.Vertex3(w / 2, h, z);
+
+            GL.TexCoord2(0.0, 1.0);
+            GL.Vertex3(-w / 2, h, z);
+
+            GL.TexCoord2(0.0, 0.0);
+            GL.Vertex3(-w / 2, 0, z);
+
+            GL.TexCoord2(1.0, 0.0);
+            GL.Vertex3(w / 2, 0, z);
 
             GL.End();
 

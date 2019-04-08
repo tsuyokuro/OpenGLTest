@@ -1,6 +1,4 @@
-﻿// simple.vert
-
-varying vec4 position;
+﻿varying vec4 position;
 varying vec3 normal;
 
 void main(void)
@@ -22,3 +20,4 @@ void main(void)
 
 	gl_Position = ftransform();
 }
+
