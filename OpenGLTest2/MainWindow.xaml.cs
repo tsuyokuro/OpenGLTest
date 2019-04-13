@@ -26,7 +26,7 @@ using SharpFont;
 using System.Collections;
 using System.Diagnostics;
 
-namespace OpenGLTest2
+namespace OpenGLTest3
 {
     public partial class MainWindow : Window
     {

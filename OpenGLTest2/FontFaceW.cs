@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using SharpFont;
 
-namespace OpenGLTest2
+namespace OpenGLTest3
 {
     public class FontTex
     {

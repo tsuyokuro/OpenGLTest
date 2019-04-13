@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace OpenGLTest2
+namespace OpenGLTest3
 {
     /// <summary>
     /// App.xaml の相互作用ロジック
