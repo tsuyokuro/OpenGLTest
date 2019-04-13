@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,23 +11,26 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Drawing;
 
 using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
 
 using DebugUtil;
-using System.Drawing;
 using System.Windows.Resources;
 using System.IO;
 using FontUtil;
 using System.Drawing.Imaging;
+using SharpFont;
+using System.Collections;
+using System.Diagnostics;
 
 namespace OpenGLTest2
 {
     public partial class MainWindow : Window
     {
-        private DebugInputThread InputThread;
+        //private DebugInputThread InputThread;
 
         GLControl glControl;
 
@@ -39,14 +41,47 @@ namespace OpenGLTest2
         int FigShaderProgram;
 
         int FontShaderProgram;
-        FontService mFontService;
+
+        FontFaceW mFontW;
+
+        private void test()
+        {
+            FontTex ft1 = new FontTex(16, 3);
+            ft1.Set(0, 0, 0xa1);
+            ft1.Set(1, 0, 0xa2);
+            ft1.Set(2, 0, 0xa3);
+            ft1.Set(3, 0, 0xa4);
+            ft1.Set(4, 0, 0xa5);
+
+            ft1.Set(0, 1, 0xb1);
+            ft1.Set(1, 1, 0xb2);
+            ft1.Set(2, 1, 0xb3);
+            ft1.Set(3, 1, 0xb4);
+            ft1.Set(4, 1, 0xb5);
+
+            ft1.Set(0, 2, 0xc1);
+            ft1.Set(1, 2, 0xc2);
+            ft1.Set(2, 2, 0xc3);
+            ft1.Set(3, 2, 0xc4);
+            ft1.Set(4, 2, 0xc5);
+
+            ft1.dump();
+            Console.WriteLine();
+
+            FontTex ft2 = new FontTex(12, 10);
+
+            ft2.Paste(0, 0, ft1);
+
+            ft2.dump();
+        }
 
         public MainWindow()
         {
             InitializeComponent();
 
-            InputThread = new DebugInputThread(debugCommand);
-            InputThread.start();
+            //test();
+
+            //return;
 
             glControl = new GLControl();
 
@@ -57,18 +92,9 @@ namespace OpenGLTest2
 
             GLControlHost.Child = glControl;
 
-            mFontService = new FontService();
-
-            mFontService.SetFont("C:\\Windows\\Fonts\\msgothic.ttc");
-            mFontService.SetSize(24);
-
-            Bitmap image = mFontService.RenderString("This is テスト", System.Drawing.Color.White, System.Drawing.Color.Blue);
-
-            image.Save("F:\\work2\\test.bmp");
-
-            image = mFontService.RenderString("a", System.Drawing.Color.White, System.Drawing.Color.Blue);
-
-            image.Save("F:\\work2\\test2.bmp");
+            mFontW = new FontFaceW();
+            mFontW.SetFont("C:\\Windows\\Fonts\\msgothic.ttc");
+            mFontW.SetSize(11);
         }
 
         private void GlControl_MouseMove(object sender, System.Windows.Forms.MouseEventArgs e)
@@ -102,25 +128,6 @@ namespace OpenGLTest2
             GL.LoadMatrix(ref projection);
         }
 
-        private void DrawText()
-        {
-            GL.MatrixMode(MatrixMode.Modelview);
-
-            GL.PushMatrix();
-
-            GL.Translate(0, 0, 0);
-
-            GL.Scale(0.2, 0.2, 0.2);
-
-            GL.Color4(Color4.White);
-
-            string s = "あtest黒木";
-
-
-            GL.Uniform1(GL.GetUniformLocation(FigShaderProgram, "texture"), 1);
-
-            GL.PopMatrix();
-        }
 
         private void SetupGL()
         {
@@ -131,7 +138,8 @@ namespace OpenGLTest2
             SetupFigShader();
             SetupFontShader();
 
-            SetupTestTexture();
+            SetupTestTexture2();
+            //SetupTestTexture3();
         }
 
         private void SetupFigShader()
@@ -267,20 +275,15 @@ namespace OpenGLTest2
         int TestTextureW;
         int TestTextureH;
 
-        private void SetupTestTexture()
+        private void SetupTestTexture2()
         {
-            Bitmap image = mFontService.RenderString("This is テスト", System.Drawing.Color.White, System.Drawing.Color.Transparent);
+            FontTex tex = null;
 
-            image.RotateFlip(RotateFlipType.RotateNoneFlipY);
+            //tex = mFontW.CreateTexture("agjA,黒123");
+            tex = mFontW.CreateTexture("123.123");
 
-            TestTextureW = image.Width;
-            TestTextureH = image.Height;
-
-            System.Drawing.Rectangle rect = new System.Drawing.Rectangle(0, 0, image.Width, image.Height);
-
-            BitmapData bd = image.LockBits(rect,
-                ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-
+            TestTextureW = tex.ImgW;
+            TestTextureH = tex.ImgH;
 
             TestTexture = GL.GenTexture();
 
@@ -291,14 +294,10 @@ namespace OpenGLTest2
 
             GL.TexImage2D(
                 TextureTarget.Texture2D, 0,
-                PixelInternalFormat.Rgba,
-                bd.Width, bd.Height, 0,
-                OpenTK.Graphics.OpenGL.PixelFormat.Bgra,
-                PixelType.UnsignedByte, bd.Scan0);
-
-            image.UnlockBits(bd);
-
-            image.Dispose();
+                PixelInternalFormat.Alpha8,
+                tex.W, tex.H, 0,
+                OpenTK.Graphics.OpenGL.PixelFormat.Alpha,
+                PixelType.UnsignedByte, tex.Data);
         }
 
         //glControlの描画時に実行される。
@@ -310,9 +309,9 @@ namespace OpenGLTest2
             GL.LoadIdentity();
 
             Vector3 eye = Vector3.Zero;
-            eye.X = 50f;
-            eye.Y = 50f;
-            eye.Z = 200f;
+            eye.X = 10f;
+            eye.Y = 20f;
+            eye.Z = 50f;
             Matrix4 modelview = Matrix4.LookAt(eye, Vector3.Zero, Vector3.UnitY);
             GL.LoadMatrix(ref modelview);
 
@@ -338,8 +337,28 @@ namespace OpenGLTest2
 
             GL.End();
 
+            GL.UseProgram(0);
+
+            fw = 5.0f;
+            fz = -0.5f;
+
+            float x = -10;
+            float y = 0;
+
+            GL.Normal3(new Vector3d(0, 0, 1));
+            GL.Color4(System.Drawing.Color.Coral);
+
+            GL.Begin(PrimitiveType.Quads);
+
+            GL.Vertex3(-fw + x, -fw + y, fz);
+            GL.Vertex3(fw + x, -fw + y, fz);
+            GL.Vertex3(fw + x, fw + y, fz);
+            GL.Vertex3(-fw + x, fw + y, fz);
+
+            GL.End();
+
+
             //GL.Enable(EnableCap.Texture2D);
-            //GL.UseProgram(0);
 
             GL.UseProgram(FontShaderProgram);
 
@@ -355,6 +374,8 @@ namespace OpenGLTest2
 
             GL.Enable(EnableCap.Blend);
             GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+
+            GL.Color4(System.Drawing.Color.YellowGreen);
 
             GL.Normal3(new Vector3d(0, 0, 1));
 
@@ -373,6 +394,8 @@ namespace OpenGLTest2
             GL.Vertex3(w / 2, 0, z);
 
             GL.End();
+
+            GL.UseProgram(0);
 
             glControl.SwapBuffers();
         }
