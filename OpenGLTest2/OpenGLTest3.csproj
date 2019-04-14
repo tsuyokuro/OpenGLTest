@@ -162,8 +162,6 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
     <AppDesigner Include="Properties\" />
-    <Resource Include="Shader\font_fragment.shader" />
-    <Resource Include="Shader\font_vertex.shader" />
     <Resource Include="Shader\fragment.shader" />
     <Resource Include="Shader\vertex.shader" />
   </ItemGroup>

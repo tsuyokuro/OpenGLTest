@@ -1,6 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using SharpFont;
+using OpenTK.Graphics.OpenGL;
+using System.Windows.Resources;
+using System.Windows;
+using System.IO;
+using OpenTK;
 
 namespace OpenGLTest3
 {
@@ -9,11 +14,15 @@ namespace OpenGLTest3
         public byte[] Data = null;
         public int W = 0;
         public int H = 0;
+
         public int ImgW = 0;
         public int ImgH = 0;
 
-        public int ShiftX = 0;
-        public int ShiftY = 0;
+        public int PosX = 0;
+        public int PosY = 0;
+
+        public int FontW = 0;
+        public int FontH = 0;
 
         public bool IsSpace
         {
@@ -22,13 +31,13 @@ namespace OpenGLTest3
 
         public FontTex() { }
 
-        public FontTex(int fontW, int fontH)
+        public FontTex(int imgW, int imgH)
         {
-            ImgW = fontW;
-            ImgH = fontH;
+            ImgW = imgW;
+            ImgH = imgH;
 
-            W = ((fontW + 3) / 4) * 4;
-            H = fontH;
+            W = ((imgW + 3) / 4) * 4;
+            H = imgH;
 
             Data = new byte[W * H];
         }
@@ -257,10 +266,12 @@ namespace OpenGLTest3
             Size = 8.25f;
         }
 
-        public void SetFont(string filename)
+        public void SetFont(string filename, int face_index=0)
         {
-            FontFace = new Face(mLib, filename);
+            FontFace = new Face(mLib, filename, face_index);
             SetSize(this.Size);
+
+            Cache.Clear();
         }
 
         public void SetSize(float size)
@@ -288,21 +299,33 @@ namespace OpenGLTest3
             FontFace.Glyph.RenderGlyph(RenderMode.Light);
             FTBitmap ftbmp = FontFace.Glyph.Bitmap;
 
+            int fontW = (int)((float)FontFace.Glyph.Metrics.HorizontalAdvance);
+            int fontH = (int)((float)FontFace.Glyph.Metrics.VerticalAdvance);
+
             if (ftbmp.Width > 0 && ftbmp.Rows > 0)
             {
                 float top = (float)FontFace.Size.Metrics.Ascender;
                 int y = (int)(top - (float)FontFace.Glyph.Metrics.HorizontalBearingY);
 
                 ft = FontTex.Create(ftbmp);
-                ft.ShiftY = y;
 
+                ft.PosX = (int)((float)FontFace.Glyph.Metrics.HorizontalBearingX);
+                if (ft.PosX < 0) { ft.PosX = 0; };
+                ft.PosY = y;
+                ft.FontW = Math.Max(fontW, ft.ImgW);
+                ft.FontH = fontH;
             }
             else
             {
                 ft = FontTex.CreateSpace((int)FontFace.Glyph.Advance.X, (int)FontFace.Glyph.Advance.Y);
+                ft.FontW = fontW;
+                ft.FontH = fontH;
             }
 
             Cache.Add(c, ft);
+
+            //ft.dump_b();
+            //Console.WriteLine();
 
             return ft;
         }
@@ -318,10 +341,10 @@ namespace OpenGLTest3
             {
                 FontTex ft = CreateTexture(c);
 
-                fw += ft.ImgW;
-                if (ft.ImgH + ft.ShiftY > fh)
+                fw += ft.FontW;
+                if (ft.FontH > fh)
                 {
-                    fh = ft.ImgH + ft.ShiftY;
+                    fh = ft.FontH;
                 }
 
                 ta.Add(ft);
@@ -334,11 +357,171 @@ namespace OpenGLTest3
 
             foreach (FontTex ft in ta)
             {
-                mft.Paste(x, y + ft.ShiftY, ft);
-                x += ft.ImgW;
+                mft.Paste(x + ft.PosX, y + ft.PosY, ft);
+                x += ft.FontW;
             }
 
+            //mft.dump_b();
+
             return mft;
+        }
+    }
+
+    public class FontRenderer
+    {
+        public static string VertexShaderSrc =
+@"
+void main(void)
+{
+	gl_FrontColor = gl_Color;
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+	gl_Position = ftransform();
+}
+";
+
+        public static string FragmentShaderSrc =
+@"
+uniform sampler2D tex;
+
+void main()
+{
+	vec4 a = texture2D(tex, gl_TexCoord[0].st);
+	vec4 color = gl_Color;
+	color[3] = color[3] * a[3];
+	gl_FragColor = color;
+}
+";
+
+        public int Texture = -1;
+        public static int FontShaderProgram = -1;
+
+        public void Init()
+        {
+            Texture = GL.GenTexture();
+
+            if (FontShaderProgram == -1)
+            {
+                SetupFontShader();
+            }
+        }
+
+        private void SetupFontShader()
+        {
+            //string vertexSrc = ReadResourceText("/Shader/font_vertex.shader");
+            //string fragmentSrc = ReadResourceText("/Shader/font_fragment.shader");
+
+            string vertexSrc = VertexShaderSrc;
+            string fragmentSrc = FragmentShaderSrc;
+
+            int status;
+
+            int vertexShader = GL.CreateShader(ShaderType.VertexShader);
+            GL.ShaderSource(vertexShader, vertexSrc);
+            GL.CompileShader(vertexShader);
+            GL.GetShader(vertexShader, ShaderParameter.CompileStatus, out status);
+            if (status == 0)
+            {
+                throw new ApplicationException(GL.GetShaderInfoLog(vertexShader));
+            }
+
+            int fragmentShader = GL.CreateShader(ShaderType.FragmentShader);
+            GL.ShaderSource(fragmentShader, fragmentSrc);
+            GL.CompileShader(fragmentShader);
+            GL.GetShader(fragmentShader, ShaderParameter.CompileStatus, out status);
+            if (status == 0)
+            {
+                throw new ApplicationException(GL.GetShaderInfoLog(fragmentShader));
+            }
+
+            int shaderProgram = GL.CreateProgram();
+
+            //各シェーダオブジェクトをシェーダプログラムへ登録
+            GL.AttachShader(shaderProgram, vertexShader);
+            GL.AttachShader(shaderProgram, fragmentShader);
+
+            //不要になった各シェーダオブジェクトを削除
+            GL.DeleteShader(vertexShader);
+            GL.DeleteShader(fragmentShader);
+
+            //シェーダプログラムのリンク
+            GL.LinkProgram(shaderProgram);
+
+            GL.GetProgram(shaderProgram, GetProgramParameterName.LinkStatus, out status);
+            
+            //シェーダプログラムのリンクのチェック
+            if (status == 0)
+            {
+                throw new ApplicationException(GL.GetProgramInfoLog(shaderProgram));
+            }
+
+            FontShaderProgram = shaderProgram;
+        }
+
+        private string ReadResourceText(string path)
+        {
+            Uri fileUri = new Uri(path, UriKind.Relative);
+            StreamResourceInfo info = Application.GetResourceStream(fileUri);
+            StreamReader sr = new StreamReader(info.Stream);
+
+            string s = sr.ReadToEnd();
+            sr.Close();
+
+            return s;
+        }
+
+        public void Render(FontTex tex)
+        {
+            GL.ActiveTexture(TextureUnit.Texture0);
+
+            GL.BindTexture(TextureTarget.Texture2D, Texture);
+
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+
+            GL.TexImage2D(
+                TextureTarget.Texture2D, 0,
+                PixelInternalFormat.Alpha8,
+                tex.W, tex.H, 0,
+                PixelFormat.Alpha,
+                PixelType.UnsignedByte, tex.Data);
+
+
+            GL.UseProgram(FontShaderProgram);
+
+            GL.TexCoord2(1.0, 1.0);
+
+            int texLoc = GL.GetUniformLocation(FontShaderProgram, "tex");
+
+            GL.Uniform1(texLoc, 0);
+
+            float w = tex.W / 4;
+            float h = tex.H / 4;
+            float z = 0;
+
+            GL.Enable(EnableCap.Blend);
+            GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+
+            GL.Color4(System.Drawing.Color.YellowGreen);
+
+            GL.Normal3(new Vector3d(0, 0, 1));
+
+            GL.Begin(PrimitiveType.Quads);
+
+            GL.TexCoord2(1.0, 1.0);
+            GL.Vertex3(w / 2, h, z);
+
+            GL.TexCoord2(0.0, 1.0);
+            GL.Vertex3(-w / 2, h, z);
+
+            GL.TexCoord2(0.0, 0.0);
+            GL.Vertex3(-w / 2, 0, z);
+
+            GL.TexCoord2(1.0, 0.0);
+            GL.Vertex3(w / 2, 0, z);
+
+            GL.End();
+
+            GL.UseProgram(0);
         }
     }
 }
