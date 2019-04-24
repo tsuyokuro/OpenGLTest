@@ -7,7 +7,7 @@ using System.Windows;
 using System.IO;
 using OpenTK;
 
-namespace OpenGLTest3
+namespace GLFont
 {
     public class FontTex
     {

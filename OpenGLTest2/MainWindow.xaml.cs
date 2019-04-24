@@ -25,12 +25,13 @@ using System.Drawing.Imaging;
 using SharpFont;
 using System.Collections;
 using System.Diagnostics;
+using GLFont;
 
 namespace OpenGLTest3
 {
     public partial class MainWindow : Window
     {
-        //private DebugInputThread InputThread;
+        private DebugInputThread InputThread;
 
         GLControl glControl;
 
@@ -82,6 +83,9 @@ namespace OpenGLTest3
         public MainWindow()
         {
             InitializeComponent();
+
+            InputThread = new DebugInputThread(debugCommand);
+            InputThread.start();
 
             mFontW = new FontFaceW();
             mFontW.SetFont("C:\\Windows\\Fonts\\msgothic.ttc", 1);
