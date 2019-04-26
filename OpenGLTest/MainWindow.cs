@@ -20,12 +20,12 @@ using OpenTK.Graphics.OpenGL;
 using DebugUtil;
 using System.Windows.Resources;
 using System.IO;
-using FontUtil;
 using System.Drawing.Imaging;
 using SharpFont;
 using System.Collections;
 using System.Diagnostics;
 using GLFont;
+using GLUtil;
 
 namespace OpenGLTest3
 {
@@ -43,6 +43,7 @@ namespace OpenGLTest3
 
         FontFaceW mFontW;
         FontRenderer mFontRenderer;
+        FontRenderer mFontRenderer2;
 
         private void test()
         {
@@ -105,6 +106,7 @@ namespace OpenGLTest3
             GLControlHost.Child = glControl;
 
             mFontRenderer = new FontRenderer();
+            mFontRenderer2 = new FontRenderer();
 
             //mFontW.CreateTexture(' ');
             //mFontW.CreateTexture('1');
@@ -161,6 +163,7 @@ namespace OpenGLTest3
             SetupFigShader();
 
             mFontRenderer.Init();
+            mFontRenderer2.Init();
 
             //SetupTestTexture2();
         }
@@ -257,6 +260,7 @@ namespace OpenGLTest3
 
         private void Render()
         {
+            GL.ClearColor(0, 0, 0, 1.0f);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
             GL.MatrixMode(MatrixMode.Modelview);
@@ -311,12 +315,27 @@ namespace OpenGLTest3
 
             GL.End();
 
-            GL.Translate(-12, 0, 0);
-            GL.Rotate(30, Vector3d.UnitZ);
-            FontTex tex = mFontW.CreateTexture($"agjk{glControl.Width}");
-            //tex.dump_b();
-            mFontRenderer.Render(tex);
+            GL.Translate(0, 0, 0);
+            GL.Rotate(-30, Vector3d.UnitZ);
+
+            DrawText();
         }
+
+        private void DrawText()
+        {
+            FontTex tex = mFontW.CreateTexture($"agjk{glControl.Width}");
+
+            Vector3d xv = Vector3d.UnitX * tex.ImgW * 0.2;
+            Vector3d yv = Vector3d.UnitY * tex.ImgH * 0.2;
+
+            Vector3d a = Vector3d.Zero;
+
+            a -= (xv / 2);
+
+
+            mFontRenderer.Render(tex, a, xv, yv);
+        }
+
 
         private void debugCommand(String s)
         {
@@ -334,8 +353,8 @@ namespace OpenGLTest3
 
         private void test1()
         {
-            int imgW = 640;
-            int imgH = 640;
+            int imgW = 768;
+            int imgH = 1024;
 
             float aspect = (float)imgW / (float)imgH;
             float fovy = (float)Math.PI / 4.0f;
@@ -355,9 +374,9 @@ namespace OpenGLTest3
 
             FrameBufferW fb = new FrameBufferW();
             fb.Create(imgW, imgH);
-            fb.Start();
+            fb.Begin();
 
-            GL.ClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+            GL.ClearColor(0f, 0f, 0f, 0f);
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
             Render();
@@ -371,126 +390,6 @@ namespace OpenGLTest3
             GL.PopMatrix();
 
             bmp.Save(@"F:\work\test.bmp");
-        }
-
-
-
-        class FrameBufferW
-        {
-            int Width;
-            int Height;
-
-            int hFrameBuffer;
-            //int RenderBufferId;
-            int hColorTex;
-            int hDepthTex;
-
-            public Bitmap GetBitmap()
-            {
-                Bitmap bmp = new Bitmap(Width, Height);
-                BitmapData bmpData
-                    = bmp.LockBits(new System.Drawing.Rectangle(0, 0, bmp.Width, bmp.Height),
-                                    ImageLockMode.WriteOnly,
-                                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-
-                GL.ReadBuffer(ReadBufferMode.Front);
-
-                GL.ReadPixels(
-                    0, 0,
-                    Width, Height,
-                    OpenTK.Graphics.OpenGL.PixelFormat.Bgra,
-                    PixelType.UnsignedByte,
-                    bmpData.Scan0);
-
-                bmp.UnlockBits(bmpData);
-
-                bmp.RotateFlip(RotateFlipType.RotateNoneFlipY);
-
-                return bmp;
-            }
-
-            public void Start()
-            {
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, hFrameBuffer);
-                //GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, RenderBufferId);
-                GL.Viewport(0, 0, Width, Height);
-            }
-
-            public void End()
-            {
-                GL.BindTexture(TextureTarget.Texture2D, 0);
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-                //GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0);
-                GL.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            }
-
-            public void Dispose()
-            {
-                GL.DeleteTexture(hColorTex);
-                GL.DeleteTexture(hDepthTex);
-                //GL.DeleteRenderbuffer(RenderBufferId);
-                GL.DeleteFramebuffer(hFrameBuffer);
-            }
-
-            public void Create(int width, int height)
-            {
-                Width = width;
-                Height = width;
-
-                // Color Texture
-                hColorTex = GL.GenTexture();
-                GL.BindTexture(TextureTarget.Texture2D, hColorTex);
-
-                GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
-                GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
-                GL.TexImage2D(
-                    TextureTarget.Texture2D,
-                    0,
-                    PixelInternalFormat.Rgba,
-                    width, height,
-                    0,
-                    OpenTK.Graphics.OpenGL.PixelFormat.Rgba,
-                    PixelType.UnsignedByte,
-                    IntPtr.Zero);
-
-
-                // Depth Texture
-                hDepthTex = GL.GenTexture();
-                GL.BindTexture(TextureTarget.Texture2D, hDepthTex);
-                GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
-                GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
-                GL.TexImage2D(
-                    TextureTarget.Texture2D,
-                    0,
-                    (PixelInternalFormat)All.DepthComponent32,
-                    width, height,
-                    0,
-                    OpenTK.Graphics.OpenGL.PixelFormat.DepthComponent,
-                    PixelType.UnsignedInt,
-                    IntPtr.Zero);
-
-
-                // Create FrameBuffer
-                hFrameBuffer = GL.GenFramebuffer();
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, hFrameBuffer);
-
-                // Create RenderBuffer
-                //RenderBufferId = GL.GenRenderbuffer();
-                //GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, RenderBufferId);
-                //GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Rgba12, width, height);
-
-                //フレームバッファにレンダバッファを割り当てる。
-                //GL.FramebufferRenderbuffer(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, RenderbufferTarget.Renderbuffer, RenderBufferId);
-
-                // Attouch color and depth texture to FrameBuffer
-                GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, hColorTex, 0);
-                GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, TextureTarget.Texture2D, hDepthTex, 0);
-
-                // Since setup is completed, unbind objects.
-                GL.BindTexture(TextureTarget.Texture2D, 0);
-                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0);
-                GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-            }
         }
     }
 }
