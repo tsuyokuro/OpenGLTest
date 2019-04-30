@@ -78,7 +78,12 @@ namespace OpenGLTest3
 
         private void test2()
         {
-            FontTex ft = mFontW.CreateTexture("agjk123");
+            FontFaceW fw = new FontFaceW();
+            fw.SetResourceFont("/Fonts/mplus-1m-light.ttf", 0);
+            fw.SetSize(24);
+
+            mFontW = fw;
+            fw.CreateTexture("$agj");
         }
 
         public MainWindow()
@@ -88,11 +93,13 @@ namespace OpenGLTest3
             InputThread = new DebugInputThread(debugCommand);
             InputThread.start();
 
-            mFontW = new FontFaceW();
-            mFontW.SetFont("C:\\Windows\\Fonts\\msgothic.ttc", 1);
-            mFontW.SetSize(24);
+            //mFontW = new FontFaceW();
+            //mFontW.SetFont("C:\\Windows\\Fonts\\msgothic.ttc", 1);
+            //mFontW.SetSize(24);
 
-            //test2();
+            //mFontW.CreateTexture("$agj");
+
+            test2();
 
             //return;
 
@@ -304,10 +311,9 @@ namespace OpenGLTest3
             float y = 0;
 
             GL.Normal3(new Vector3d(0, 0, 1));
-            GL.Color4(System.Drawing.Color.Coral);
 
+            SetMaterial(new Color4(0.2f, 0.2f, 1.0f, 1.0f));
             GL.Begin(PrimitiveType.Quads);
-
             GL.Vertex3(-fw + x, -fw + y, fz);
             GL.Vertex3(fw + x, -fw + y, fz);
             GL.Vertex3(fw + x, fw + y, fz);
@@ -318,12 +324,21 @@ namespace OpenGLTest3
             GL.Translate(0, 0, 0);
             GL.Rotate(-30, Vector3d.UnitZ);
 
+            GL.Color4(System.Drawing.Color.Coral);
             DrawText();
         }
 
         private void DrawText()
         {
-            FontTex tex = mFontW.CreateTexture($"agjk{glControl.Width}");
+            string[] sx = {
+                "typ1_ABCD",
+                "typ2_gjkl",
+                "typ3_$$$$",
+            };
+
+            int idx = glControl.Width % sx.Length;
+
+            FontTex tex = mFontW.CreateTexture($"{sx[idx]}{glControl.Width}");
 
             Vector3d xv = Vector3d.UnitX * tex.ImgW * 0.2;
             Vector3d yv = Vector3d.UnitY * tex.ImgH * 0.2;
@@ -332,6 +347,21 @@ namespace OpenGLTest3
 
             a -= (xv / 2);
 
+            SetMaterial(new Color4(1f, 1f, 1f, 1f));
+            GL.Begin(PrimitiveType.Lines);
+            GL.Vertex3(a);
+            GL.Vertex3(a + xv);
+
+            GL.Vertex3(a + xv);
+            GL.Vertex3(a + xv + yv);
+
+            GL.Vertex3(a + xv + yv);
+            GL.Vertex3(a + yv);
+
+            GL.Vertex3(a + yv);
+            GL.Vertex3(a);
+
+            GL.End();
 
             mFontRenderer.Render(tex, a, xv, yv);
         }
